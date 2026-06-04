@@ -1,0 +1,5 @@
+# Create the .gitignore file and add node_modules
+echo "node_modules/" > .gitignore
+
+# Add .env to the next line
+echo ".env" >> .gitignore
