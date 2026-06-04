@@ -4,15 +4,24 @@ import axios from 'axios';
 function App() {
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
+  
+  // New States for Day 3 Features
+  const [searchQuery, setSearchQuery] = useState('');
+  const [editingId, setEditingId] = useState(null); // Tracks if we are editing
 
   const [formData, setFormData] = useState({
     name: '', email: '', phone: '', companyName: '', status: 'New', notes: ''
   });
 
-  // 1. READ (Get all leads)
-  const fetchLeads = async () => {
+  // 1. READ & SEARCH
+  const fetchLeads = async (query = '') => {
     try {
-      const response = await axios.get('http://localhost:5000/api/leads');
+      // If there's a search query, append it to the URL (hits the backend search logic built on Day 1)
+      const url = query 
+        ? `http://localhost:5000/api/leads?search=${query}` 
+        : 'http://localhost:5000/api/leads';
+        
+      const response = await axios.get(url);
       setLeads(response.data.data);
       setLoading(false);
     } catch (error) {
@@ -25,53 +34,118 @@ function App() {
     fetchLeads();
   }, []);
 
+  // Handle Search Input (Pressing Enter or clicking Search)
+  const handleSearch = (e) => {
+    e.preventDefault();
+    fetchLeads(searchQuery);
+  };
+
+  // Form Input Handler
   const handleInputChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // 2. CREATE (Add a new lead)
+  // Setup the form for Editing
+  const handleEditClick = (lead) => {
+    setEditingId(lead._id);
+    setFormData({
+      name: lead.name,
+      email: lead.email,
+      phone: lead.phone,
+      companyName: lead.companyName,
+      status: lead.status,
+      notes: lead.notes
+    });
+    // Scroll to top where the form is
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Cancel Editing
+  const cancelEdit = () => {
+    setEditingId(null);
+    setFormData({ name: '', email: '', phone: '', companyName: '', status: 'New', notes: '' });
+  };
+
+  // 2. CREATE or UPDATE
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await axios.post('http://localhost:5000/api/leads', formData);
+      if (editingId) {
+        // If editingId exists, we UPDATE
+        await axios.put(`http://localhost:5000/api/leads/${editingId}`, formData);
+        setEditingId(null);
+      } else {
+        // Otherwise, we CREATE
+        await axios.post('http://localhost:5000/api/leads', formData);
+      }
+      
+      // Clear form and refresh table
       setFormData({ name: '', email: '', phone: '', companyName: '', status: 'New', notes: '' });
-      fetchLeads(); // Refresh table
+      fetchLeads(searchQuery); 
     } catch (error) {
-      console.error("Error creating lead:", error);
-      alert("Failed to create lead.");
+      console.error("Error saving lead:", error);
+      alert("Failed to save lead.");
     }
   };
 
-  // 3. UPDATE (Change lead status)
+  // 3. UPDATE STATUS ONLY (From Table)
   const updateStatus = async (id, newStatus) => {
     try {
       await axios.put(`http://localhost:5000/api/leads/${id}`, { status: newStatus });
-      fetchLeads(); // Refresh table to reflect change
+      fetchLeads(searchQuery); 
     } catch (error) {
       console.error("Error updating status:", error);
     }
   };
 
-  // 4. DELETE (Remove a lead)
+  // 4. DELETE
   const deleteLead = async (id) => {
     if (!window.confirm("Are you sure you want to delete this lead?")) return;
     try {
       await axios.delete(`http://localhost:5000/api/leads/${id}`);
-      fetchLeads(); // Refresh table
+      fetchLeads(searchQuery);
     } catch (error) {
       console.error("Error deleting lead:", error);
     }
   };
 
+  // Derived Statistics (Calculated instantly on the frontend)
+  const totalLeads = leads.length;
+  const convertedLeads = leads.filter(l => l.status === 'Converted').length;
+  const lostLeads = leads.filter(l => l.status === 'Lost').length;
+  const activeLeads = totalLeads - convertedLeads - lostLeads;
+
   return (
     <div className="min-h-screen bg-gray-100 p-8">
       <div className="max-w-6xl mx-auto space-y-8">
-
+        
         <h1 className="text-3xl font-bold text-gray-800">Lead Management CRM</h1>
 
+        {/* 🚀 NEW: Statistics Dashboard */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-blue-500">
+            <h3 className="text-gray-500 text-sm font-semibold">Total Leads</h3>
+            <p className="text-2xl font-bold text-gray-800">{totalLeads}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-yellow-500">
+            <h3 className="text-gray-500 text-sm font-semibold">Active Pipeline</h3>
+            <p className="text-2xl font-bold text-gray-800">{activeLeads}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-green-500">
+            <h3 className="text-gray-500 text-sm font-semibold">Converted</h3>
+            <p className="text-2xl font-bold text-gray-800">{convertedLeads}</p>
+          </div>
+          <div className="bg-white p-4 rounded-lg shadow border-l-4 border-red-500">
+            <h3 className="text-gray-500 text-sm font-semibold">Lost</h3>
+            <p className="text-2xl font-bold text-gray-800">{lostLeads}</p>
+          </div>
+        </div>
+
         {/* Form Section */}
-        <div className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Add New Lead</h2>
+        <div className="bg-white p-6 rounded-lg shadow border border-gray-200">
+          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+            {editingId ? '✏️ Edit Lead Details' : '➕ Add New Lead'}
+          </h2>
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <input required type="text" name="name" value={formData.name} onChange={handleInputChange} placeholder="Full Name" className="border p-2 rounded focus:outline-blue-500" />
             <input required type="email" name="email" value={formData.email} onChange={handleInputChange} placeholder="Email Address" className="border p-2 rounded focus:outline-blue-500" />
@@ -85,14 +159,42 @@ function App() {
               <option value="Lost">Lost</option>
             </select>
             <input type="text" name="notes" value={formData.notes} onChange={handleInputChange} placeholder="Notes (Optional)" className="border p-2 rounded focus:outline-blue-500" />
-            <button type="submit" className="col-span-1 md:col-span-2 bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
-              Save Lead
-            </button>
+            
+            <div className="col-span-1 md:col-span-2 flex gap-4">
+              <button type="submit" className="flex-1 bg-blue-600 text-white font-bold py-2 px-4 rounded hover:bg-blue-700 transition">
+                {editingId ? 'Update Lead' : 'Save Lead'}
+              </button>
+              {editingId && (
+                <button type="button" onClick={cancelEdit} className="flex-1 bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded hover:bg-gray-400 transition">
+                  Cancel
+                </button>
+              )}
+            </div>
           </form>
         </div>
-
-        {/* Table Section */}
+        
+        {/* Table & Search Section */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
+          
+          {/* 🚀 NEW: Search Bar */}
+          <div className="p-4 border-b border-gray-200 bg-gray-50">
+            <form onSubmit={handleSearch} className="flex gap-2">
+              <input 
+                type="text" 
+                value={searchQuery} 
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name, email, or company..." 
+                className="flex-1 border p-2 rounded focus:outline-blue-500"
+              />
+              <button type="submit" className="bg-gray-800 text-white px-4 py-2 rounded hover:bg-gray-700 transition">
+                Search
+              </button>
+              <button type="button" onClick={() => { setSearchQuery(''); fetchLeads(''); }} className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 transition">
+                Clear
+              </button>
+            </form>
+          </div>
+
           {loading ? (
             <p className="p-6 text-gray-500">Loading leads...</p>
           ) : (
@@ -109,15 +211,14 @@ function App() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {leads.length === 0 ? (
-                    <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">No leads found. Add one above!</td></tr>
+                    <tr><td colSpan="5" className="px-6 py-4 text-center text-gray-500">No leads found.</td></tr>
                   ) : (
                     leads.map((lead) => (
-                      <tr key={lead._id} className="hover:bg-gray-50">
+                      <tr key={lead._id} className="hover:bg-gray-50 transition">
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{lead.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{lead.email}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{lead.companyName}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          {/* Interactive Status Dropdown */}
                           <select
                             value={lead.status}
                             onChange={(e) => updateStatus(lead._id, e.target.value)}
@@ -136,7 +237,11 @@ function App() {
                             <option value="Lost">Lost</option>
                           </select>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-3">
+                          {/* 🚀 NEW: Edit Button */}
+                          <button onClick={() => handleEditClick(lead)} className="text-blue-500 hover:text-blue-700 font-semibold">
+                            Edit
+                          </button>
                           <button onClick={() => deleteLead(lead._id)} className="text-red-500 hover:text-red-700 font-semibold">
                             Delete
                           </button>
