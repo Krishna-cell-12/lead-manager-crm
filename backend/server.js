@@ -15,7 +15,9 @@ const app = express();
 app.use(express.json());
 
 // Enable Cross-Origin Resource Sharing (Crucial for Day 2 Frontend connection)
-app.use(cors());
+app.use(cors({
+  origin: '*'
+}));
 
 // Mount API routes
 app.use('/api/leads', require('./routes/leadRoutes'));
