@@ -18,8 +18,8 @@ function App() {
     try {
       // If there's a search query, append it to the URL (hits the backend search logic built on Day 1)
       const url = query 
-        ? `http://localhost:5000/api/leads?search=${query}` 
-        : 'http://localhost:5000/api/leads';
+        ? `https://lead-manager-crm-3pdt.onrender.com/api/leads?search=${query}` 
+        : 'https://lead-manager-crm-3pdt.onrender.com/api/leads';
         
       const response = await axios.get(url);
       setLeads(response.data.data);
@@ -72,11 +72,11 @@ function App() {
     try {
       if (editingId) {
         // If editingId exists, we UPDATE
-        await axios.put(`http://localhost:5000/api/leads/${editingId}`, formData);
+        await axios.put(`https://lead-manager-crm-3pdt.onrender.com/api/leads/${editingId}`, formData);
         setEditingId(null);
       } else {
         // Otherwise, we CREATE
-        await axios.post('http://localhost:5000/api/leads', formData);
+        await axios.post('https://lead-manager-crm-3pdt.onrender.com/api/leads', formData);
       }
       
       // Clear form and refresh table
@@ -91,7 +91,7 @@ function App() {
   // 3. UPDATE STATUS ONLY (From Table)
   const updateStatus = async (id, newStatus) => {
     try {
-      await axios.put(`http://localhost:5000/api/leads/${id}`, { status: newStatus });
+      await axios.put(`https://lead-manager-crm-3pdt.onrender.com/api/leads/${id}`, { status: newStatus });
       fetchLeads(searchQuery); 
     } catch (error) {
       console.error("Error updating status:", error);
@@ -102,7 +102,7 @@ function App() {
   const deleteLead = async (id) => {
     if (!window.confirm("Are you sure you want to delete this lead?")) return;
     try {
-      await axios.delete(`http://localhost:5000/api/leads/${id}`);
+      await axios.delete(`https://lead-manager-crm-3pdt.onrender.com/api/leads/${id}`);
       fetchLeads(searchQuery);
     } catch (error) {
       console.error("Error deleting lead:", error);
